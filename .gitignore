@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+.venv/
+venv/
+env/
+
+# Flask local data
+instance/
+app.db
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node (varsa)
+node_modules/
+
+# User uploads / heavy assets (ihtiyaca göre)
+uploads/
+assets/raw/
