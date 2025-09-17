@@ -107,6 +107,8 @@
           <a href="{{ url_for('coupons.coupons_page') }}" class="btn btn-primary">Kupon Oluştur</a>
         {% endif %}
 
+        <!-- ✅ Profilim butonu -->
+        <a href="{{ url_for('profile.profile_page') }}" class="btn btn-ghost">Profilim</a>
         <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost">Logout</a>
       {% else %}
         <a href="{{ url_for('auth.login_page', next=url_for('main.index')) }}" class="btn btn-ghost">Login</a>
