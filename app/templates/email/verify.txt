@@ -1,0 +1,6 @@
+PictureScaler – E-posta Doğrulama
+
+Hesabını etkinleştirmek için bu bağlantıya tıkla:
+{{ verify_url }}
+
+Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.

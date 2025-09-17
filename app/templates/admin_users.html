@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="dark">
+  <title>Admin · Kullanıcılar</title>
+  <style>
+    :root{
+      --bg:#0b0612; --bg2:#130a1f; --card:#1a0f1ecc; --border:#3a1f44;
+      --text:#f7f3fa; --muted:#c9b0c7; --accent:#FF6A3D; --accent2:#C81D77;
+      --radius:16px; --shadow:0 20px 60px rgba(0,0,0,.45);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:
+        radial-gradient(1200px 700px at 50% 0%, rgba(255,106,61,.24) 0%, rgba(255,106,61,0) 55%),
+        radial-gradient(1400px 900px at 50% 100%, rgba(110,15,156,.45) 0%, rgba(110,15,156,0) 60%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      color:var(--text);
+      font:15px/1.55 system-ui, -apple-system, Segoe UI, Inter, Roboto;
+    }
+    .wrap{max-width:1200px; margin:36px auto; padding:0 16px}
+    h1{margin:0 0 16px; font-weight:800}
+    .card{
+      background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:16px
+    }
+    form.search{display:flex; gap:10px; margin:10px 0 14px; flex-wrap:wrap}
+    input[type="text"]{
+      flex:1; min-width:240px;
+      background:#140b20; color:#fff0ff; border:1px solid #503061;
+      border-radius:10px; padding:10px 12px
+    }
+    button, .btn{
+      background:linear-gradient(90deg,var(--accent),var(--accent2));
+      border:none; color:#1a0f1e; font-weight:800; padding:10px 12px;
+      border-radius:10px; cursor:pointer; text-decoration:none
+    }
+    .tabs{display:flex; gap:8px; margin:6px 0 12px}
+    .tab{
+      padding:8px 10px; border:1px solid var(--border);
+      border-radius:10px; background:#160e24; color:#fff; text-decoration:none
+    }
+    .tab.active{background:#2a123c}
+    table{width:100%; border-collapse:collapse}
+    th,td{padding:10px 12px; border-bottom:1px solid #2d1736; vertical-align:middle}
+    th a{color:#ffe9ff; text-decoration:none}
+    th a:hover{text-decoration:underline}
+    .muted{color:var(--muted)}
+    .right{text-align:right}
+    .pill{display:inline-block;padding:4px 8px;border-radius:10px;border:1px solid #3a1f44;background:#140b20}
+    .danger{background:#3a0e19;border-color:#82223a}
+    .ok{background:#10361f;border-color:#1f6f3a}
+    form.inline{display:inline}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Kullanıcılar</h1>
+
+    <div class="tabs">
+      <a class="tab {{ 'active' if view=='all' else '' }}"
+         href="{{ url_for('admin.users_page', view='all', q=q, sort=sort) }}">Tümü</a>
+      <a class="tab {{ 'active' if view=='sus' else '' }}"
+         href="{{ url_for('admin.users_page', view='sus', q=q, sort=sort) }}">Şüpheliler</a>
+      <a class="tab {{ 'active' if view=='banned' else '' }}"
+         href="{{ url_for('admin.users_page', view='banned', q=q, sort=sort) }}">Banlılar</a>
+    </div>
+
+    <div class="card">
+      <form class="search" method="get" action="{{ url_for('admin.users_page') }}">
+        <input type="hidden" name="view" value="{{ view }}">
+        <input type="text" name="q" value="{{ q or '' }}" placeholder="E-posta ara…">
+        <input type="hidden" name="sort" value="{{ sort or 'created_desc' }}">
+        <button type="submit">Ara</button>
+        <a class="btn" href="{{ url_for('admin.analytics_page') }}">Analitik</a>
+      </form>
+
+      {% set s = sort or 'created_desc' %}
+
+      <table>
+        <thead>
+          <tr>
+            <th>
+              {% set next = 'email_desc' if s=='email_asc' else 'email_asc' %}
+              <a href="{{ url_for('admin.users_page', q=q, sort=next, view=view) }}">E-posta
+                {% if s.startswith('email_') %}{{ '↓' if s.endswith('_desc') else '↑' }}{% endif %}
+              </a>
+            </th>
+            <th class="right">
+              {% set next = 'tokens_desc' if s=='tokens_asc' else 'tokens_asc' %}
+              <a href="{{ url_for('admin.users_page', q=q, sort=next, view=view) }}">Mevcut Token
+                {% if s.startswith('tokens_') %}{{ '↓' if s.endswith('_desc') else '↑' }}{% endif %}
+              </a>
+            </th>
+            <th class="right">
+              {% set next = 'spent_desc' if s=='spent_asc' else 'spent_asc' %}
+              <a href="{{ url_for('admin.users_page', q=q, sort=next, view=view) }}">Harcanan
+                {% if s.startswith('spent_') %}{{ '↓' if s.endswith('_desc') else '↑' }}{% endif %}
+              </a>
+            </th>
+            <th class="right">
+              {% set next = 'purchased_desc' if s=='purchased_asc' else 'purchased_asc' %}
+              <a href="{{ url_for('admin.users_page', q=q, sort=next, view=view) }}">Satın Alınan
+                {% if s.startswith('purchased_') %}{{ '↓' if s.endswith('_desc') else '↑' }}{% endif %}
+              </a>
+            </th>
+            <th class="right">
+              {% set next = 'claims_desc' if s=='claims_asc' else 'claims_asc' %}
+              <a href="{{ url_for('admin.users_page', q=q, sort=next, view=view) }}">Günlük Ödül
+                {% if s.startswith('claims_') %}{{ '↓' if s.endswith('_desc') else '↑' }}{% endif %}
+              </a>
+            </th>
+            <th class="right">
+              {% set next = 'reward_desc' if s=='reward_asc' else 'reward_asc' %}
+              <a href="{{ url_for('admin.users_page', q=q, sort=next, view=view) }}">Ödül Toplam
+                {% if s.startswith('reward_') %}{{ '↓' if s.endswith('_desc') else '↑' }}{% endif %}
+              </a>
+            </th>
+            <th>
+              {% set next = 'created_desc' if s=='created_asc' else 'created_asc' %}
+              <a href="{{ url_for('admin.users_page', q=q, sort=next, view=view) }}">Kayıt Tarihi
+                {% if s.startswith('created_') %}{{ '↓' if s.endswith('_desc') else '↑' }}{% endif %}
+              </a>
+            </th>
+            <th>Durum</th>
+            <th>İşlemler</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if rows and rows|length %}
+            {% for r in rows %}
+              <tr>
+                <td><a href="{{ url_for('admin.user_detail', user_id=r.id) }}">{{ r.email }}</a></td>
+                <td class="right">{{ r.tokens }}</td>
+                <td class="right">{{ r.spent }}</td>
+                <td class="right">{{ r.purchased }}</td>
+                <td class="right">{{ r.claims }}</td>
+                <td class="right">{{ r.reward }}</td>
+                <td>{{ r.created }}</td>
+                <td>
+                  {% if r.is_banned %}
+                    <span class="pill danger">Banlı</span>
+                  {% elif r.suspicious %}
+                    <span class="pill">Şüpheli</span>
+                  {% else %}
+                    <span class="pill ok">Normal</span>
+                  {% endif %}
+                  {% if r.is_trusted %}<span class="pill">Güvenilir</span>{% endif %}
+                </td>
+                <td>
+                  {% if r.is_banned %}
+                    <form class="inline" method="post" action="{{ url_for('admin.user_unban', user_id=r.id) }}">
+                      <button class="btn" type="submit">Banı Kaldır</button>
+                    </form>
+                  {% else %}
+                    <form class="inline" method="post" action="{{ url_for('admin.user_ban', user_id=r.id) }}">
+                      <button class="btn" type="submit">Banla</button>
+                    </form>
+                  {% endif %}
+
+                  {% if r.suspicious and not r.is_trusted and not r.is_banned %}
+                    <form class="inline" method="post" action="{{ url_for('admin.user_trust', user_id=r.id) }}">
+                      <button class="btn" type="submit">Şüpheliden Çıkar</button>
+                    </form>
+                  {% elif r.is_trusted %}
+                    <form class="inline" method="post" action="{{ url_for('admin.user_untrust', user_id=r.id) }}">
+                      <button class="btn" type="submit">Güvenilirliği Kaldır</button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="9" class="muted">Kayıt bulunamadı.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

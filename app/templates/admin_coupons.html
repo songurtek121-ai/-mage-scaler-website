@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="dark">
+  <title>Admin · Kuponlar</title>
+  <style>
+    :root{
+      --bg:#0b0612; --bg2:#130a1f; --card:#1a0f1ecc; --border:#3a1f44;
+      --text:#f7f3fa; --muted:#c9b0c7; --accent:#FF6A3D; --accent2:#C81D77;
+      --radius:16px; --shadow:0 20px 60px rgba(0,0,0,.45);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:
+      radial-gradient(1200px 700px at 50% 0%, rgba(255,106,61,.24) 0%, rgba(255,106,61,0) 55%),
+      radial-gradient(1400px 900px at 50% 100%, rgba(110,15,156,.45) 0%, rgba(110,15,156,0) 60%),
+      linear-gradient(180deg, var(--bg), var(--bg2));
+      color:var(--text); font:15px/1.55 system-ui, -apple-system, Segoe UI, Inter, Roboto;}
+    .wrap{max-width:1200px; margin:36px auto; padding:0 16px}
+    h1{margin:0 0 16px; font-weight:800}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+      border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; margin:14px 0}
+    input, select{background:#140b20; color:#fff0ff; border:1px solid #503061; border-radius:10px; padding:10px 12px}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+    .btn{background:linear-gradient(90deg,var(--accent),var(--accent2));
+      border:none; color:#1a0f1e; font-weight:800; padding:10px 12px; border-radius:10px; cursor:pointer; text-decoration:none}
+    table{width:100%; border-collapse:collapse}
+    th,td{padding:10px 12px; border-bottom:1px solid #2d1736}
+    .muted{color:var(--muted)}
+    .pill{display:inline-block;padding:4px 8px;border-radius:10px;border:1px solid #3a1f44;background:#140b20}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Kuponlar</h1>
+
+    <div class="card">
+      <h3 style="margin:4px 0 10px">Yeni Kupon Oluştur</h3>
+      <form method="post" action="{{ url_for('coupons.coupons_create') }}">
+        <div class="row">
+          <div>
+            <label>Kod</label><br>
+            <input type="text" name="code" placeholder="Örn: WELCOME50" required>
+          </div>
+          <div>
+            <label>Geçerlilik (Gün)</label><br>
+            <input type="number" name="days" min="0" value="30">
+            <div class="muted" style="font-size:12px">0 => süresiz</div>
+          </div>
+        </div>
+
+        <div class="row3" style="margin-top:10px">
+          <div>
+            <label>Toplam Kullanım Hakkı</label><br>
+            <input type="number" name="max_uses" min="1" value="100" required>
+          </div>
+          <div>
+            <label>Tür</label><br>
+            <select name="ctype" id="ctype">
+              <option value="token">Token Ödülü</option>
+              <option value="discount">% İndirim</option>
+            </select>
+          </div>
+          <div id="blk_token">
+            <label>Ödül (Token)</label><br>
+            <input type="number" name="reward_tokens" min="1" value="10">
+          </div>
+          <div id="blk_discount" style="display:none">
+            <label>İndirim (%)</label><br>
+            <input type="number" name="discount_percent" min="1" max="100" value="10">
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <button class="btn" type="submit">Kupon Oluştur</button>
+          <a class="btn" href="{{ url_for('admin.users_page') }}">Kullanıcılar</a>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:4px 0 10px">Aktif Kuponlar</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Kod</th>
+            <th>Tür</th>
+            <th>Ödül / %</th>
+            <th>Oluşturulma</th>
+            <th>Bitiş</th>
+            <th>Kullanım</th>
+            <th>Kalan</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if active %}
+            {% for c in active %}
+              {% set used = usage[c.id][0] %}
+              {% set left = usage[c.id][1] %}
+              <tr>
+                <td><span class="pill">{{ c.code }}</span></td>
+                <td>{{ c.type }}</td>
+                <td>
+                  {% if c.type=='token' %}+{{ c.reward_tokens }} token{% else %}%{{ c.discount_percent }}{% endif %}
+                </td>
+                <td>{{ c.created_at.strftime('%d %b %Y %H:%M') }}</td>
+                <td>{% if c.expires_at %}{{ c.expires_at.strftime('%d %b %Y %H:%M') }}{% else %}—{% endif %}</td>
+                <td>{{ used }}/{{ c.max_uses }}</td>
+                <td>{{ left }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="7" class="muted">Aktif kupon yok.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:4px 0 10px">Süresi Dolan Kuponlar</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Kod</th>
+            <th>Tür</th>
+            <th>Ödül / %</th>
+            <th>Oluşturulma</th>
+            <th>Bitiş</th>
+            <th>Kullanım</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if expired %}
+            {% for c in expired %}
+              {% set used = usage[c.id][0] %}
+              <tr>
+                <td><span class="pill">{{ c.code }}</span></td>
+                <td>{{ c.type }}</td>
+                <td>
+                  {% if c.type=='token' %}+{{ c.reward_tokens }} token{% else %}%{{ c.discount_percent }}{% endif %}
+                </td>
+                <td>{{ c.created_at.strftime('%d %b %Y %H:%M') }}</td>
+                <td>{{ c.expires_at.strftime('%d %b %Y %H:%M') }}</td>
+                <td>{{ used }}/{{ c.max_uses }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="6" class="muted">Liste boş.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:4px 0 10px">Kullanılmış Kuponlar (Son 200)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Tarih</th>
+            <th>Kod</th>
+            <th>Kullanıcı</th>
+            <th>Token Ödülü</th>
+            <th>İndirim (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if used %}
+            {% for r, c in used %}
+              <tr>
+                <td>{{ r.redeemed_at.strftime('%d %b %Y %H:%M') }}</td>
+                <td><span class="pill">{{ c.code }}</span></td>
+                <td>{{ r.user_id }}</td>
+                <td>{{ r.benefit_tokens }}</td>
+                <td>{{ r.discount_percent }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="5" class="muted">Henüz kullanım yok.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const ctype = document.getElementById('ctype');
+    const blk_token = document.getElementById('blk_token');
+    const blk_discount = document.getElementById('blk_discount');
+    if(ctype){
+      ctype.addEventListener('change', ()=>{
+        if(ctype.value === 'token'){ blk_token.style.display='block'; blk_discount.style.display='none'; }
+        else { blk_token.style.display='none'; blk_discount.style.display='block'; }
+      });
+    }
+  </script>
+</body>
+</html>

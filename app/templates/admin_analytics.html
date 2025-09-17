@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Analytics • PictureScaler</title>
+  <style>
+    body{margin:0;background:#0b0612;color:#f7f3fa;font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto}
+    .wrap{max-width:1200px;margin:30px auto;padding:0 16px}
+    .nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+    a.btn,button.btn{display:inline-block;padding:8px 12px;border-radius:10px;border:1px solid #3a1f44;color:#fff;background:#160e24;text-decoration:none;cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,#FF6A3D,#C81D77);border:none}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid #3a1f44;border-radius:16px;padding:18px;margin-bottom:16px}
+    .grid{display:grid;grid-template-columns:1fr;gap:16px}
+    canvas{width:100%;height:360px}
+    select{background:#160e24;color:#fff;border:1px solid #503061;border-radius:10px;padding:6px 10px}
+    .hidden{display:none}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="nav">
+      <h2>Analytics</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label>Aralık:</label>
+        <select id="rangeSel">
+          <option value="7d">7 gün</option>
+          <option value="30d" selected>30 gün</option>
+          <option value="90d">90 gün</option>
+          <option value="180d">6 ay</option>
+          <option value="270d">9 ay</option>
+          <option value="365d">12 ay</option>
+          <option value="5y">Son 5 yıl</option>
+        </select>
+        <button id="seedDaysBtn" class="btn">Test verisi (günlük)</button>
+        <button id="seedYearsBtn" class="btn">Test verisi (5 yıl)</button>
+        <button id="seedPurchBtn" class="btn">Test verisi (satın alma)</button>
+        <a class="btn" href="/">Siteye dön</a>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div id="cardDaily" class="card">
+        <h3>Günlük Olaylar (Register / Login / Upload / Dosya)</h3>
+        <canvas id="dailyChart"></canvas>
+      </div>
+      <div id="cardHourly" class="card">
+        <h3>Saatlik Dağılım (seçili aralık)</h3>
+        <canvas id="hourlyChart"></canvas>
+      </div>
+
+      <div id="cardToken" class="card">
+        <h3>Token Satışları (Günlük)</h3>
+        <canvas id="tokenChart"></canvas>
+      </div>
+
+      <div id="cardYearly" class="card hidden">
+        <h3>Yıllık Toplamlar (Son 5 Yıl)</h3>
+        <canvas id="yearlyChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+<script>
+let dailyChart, hourlyChart, yearlyChart, tokenChart;
+
+function showDaysMode(){
+  document.getElementById('cardDaily').classList.remove('hidden');
+  document.getElementById('cardHourly').classList.remove('hidden');
+  document.getElementById('cardToken').classList.remove('hidden');
+  document.getElementById('cardYearly').classList.add('hidden');
+}
+function showYearsMode(){
+  document.getElementById('cardDaily').classList.add('hidden');
+  document.getElementById('cardHourly').classList.add('hidden');
+  document.getElementById('cardToken').classList.add('hidden');
+  document.getElementById('cardYearly').classList.remove('hidden');
+}
+
+async function load(range='30d'){
+  const res = await fetch(`/admin/api/metrics?range=${range}`);
+  if(!res.ok){
+    const txt = await res.text().catch(()=> '');
+    alert(`Veri alınamadı\nStatus: ${res.status}\n${txt.slice(0,400)}`);
+    return;
+  }
+  const data = await res.json();
+
+  // --- Yıllık mod ---
+  if (data.mode === 'years'){
+    showYearsMode();
+    const labels = data.years;
+    const yearly = data.yearly;
+
+    const cfg = {
+      type:'bar',
+      data:{
+        labels,
+        datasets:[
+          {label:'Register', data: yearly.register, stack:'y'},
+          {label:'Login',    data: yearly.login,    stack:'y'},
+          {label:'Upload (işlem)',   data: yearly.upload,   stack:'y'},
+        ]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{position:'top'}},
+        scales:{x:{stacked:true}, y:{stacked:true, beginAtZero:true, ticks:{precision:0}}}
+      }
+    };
+    if (yearlyChart) yearlyChart.destroy();
+    yearlyChart = new Chart(document.getElementById('yearlyChart'), cfg);
+    return;
+  }
+
+  // --- Günlük/Saatlik mod ---
+  showDaysMode();
+
+  const labels = data.days;
+  const daily = data.daily;
+  const hours = data.hours;
+  const hourly = data.hourly;
+
+  // Günlük çizgi grafiği: Register, Login, Upload (işlem), Dosya (toplam)
+  const dailyCfg = {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {label:'Register', data: daily.register, tension:.3},
+        {label:'Login', data: daily.login, tension:.3},
+        {label:'Upload (işlem)', data: daily.upload, tension:.3},
+        {label:'Dosya (toplam)', data: data.daily_files || [], tension:.3},
+      ]
+    },
+    options: {
+      responsive:true,
+      plugins:{legend:{position:'top'}},
+      scales:{y:{beginAtZero:true, ticks:{precision:0}}}
+    }
+  };
+
+  // Saatlik stacked bar: Register/Login/Upload (olay sayısı)
+  const hourlyCfg = {
+    type:'bar',
+    data:{
+      labels: hours.map(h=>String(h).padStart(2,'0')+':00'),
+      datasets:[
+        {label:'Register', data: hourly.register, stack:'a'},
+        {label:'Login', data: hourly.login, stack:'a'},
+        {label:'Upload (işlem)', data: hourly.upload, stack:'a'},
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{position:'top'}},
+      scales:{y:{beginAtZero:true, ticks:{precision:0}}, x:{stacked:true}, y:{stacked:true}}
+    }
+  };
+
+  // Token satışları: Bar = satılan token toplamı, Line = benzersiz alıcı
+  const tokenCfg = {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {type:'bar',  label:'Satılan token (adet)', data: data.tokens_sold || [], stack:'t'},
+        {type:'line', label:'Satın alan kullanıcı (kişi)', data: data.token_buyers || [], tension:.3}
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{position:'top'}},
+      scales:{y:{beginAtZero:true, ticks:{precision:0}}}
+    }
+  };
+
+  if (dailyChart) dailyChart.destroy();
+  if (hourlyChart) hourlyChart.destroy();
+  if (tokenChart) tokenChart.destroy();
+  dailyChart = new Chart(document.getElementById('dailyChart'), dailyCfg);
+  hourlyChart = new Chart(document.getElementById('hourlyChart'), hourlyCfg);
+  tokenChart  = new Chart(document.getElementById('tokenChart'),  tokenCfg);
+}
+
+// Range değişince yükle
+document.getElementById('rangeSel').addEventListener('change', e=> load(e.target.value));
+
+// Seed butonları
+document.getElementById('seedDaysBtn').addEventListener('click', async ()=>{
+  if(!confirm('Son 7 güne test verisi eklensin mi?')) return;
+  const res = await fetch('/admin/api/seed', {method:'POST'});
+  if(!res.ok){ alert('Seed hatası'); return; }
+  const j = await res.json();
+  if(j.ok){ alert(j.inserted+' kayıt eklendi.'); load(document.getElementById('rangeSel').value); }
+  else { alert('Seed başarısız: '+(j.error||'')); }
+});
+document.getElementById('seedYearsBtn').addEventListener('click', async ()=>{
+  if(!confirm('Son 5 yıla test verisi eklensin mi?')) return;
+  const res = await fetch('/admin/api/seed-years', {method:'POST'});
+  if(!res.ok){ alert('Seed hatası'); return; }
+  const j = await res.json();
+  if(j.ok){ alert(j.inserted+' kayıt eklendi.'); load('5y'); document.getElementById('rangeSel').value='5y'; }
+  else { alert('Seed başarısız: '+(j.error||'')); }
+});
+document.getElementById('seedPurchBtn').addEventListener('click', async ()=>{
+  if(!confirm('Son 30 güne test satın alma verisi eklensin mi?')) return;
+  const res = await fetch('/admin/api/seed-purchases', {method:'POST'});
+  if(!res.ok){ alert('Seed hatası'); return; }
+  const j = await res.json();
+  if(j.ok){ alert(j.inserted+' satın alma eklendi.'); load(document.getElementById('rangeSel').value); }
+  else { alert('Seed başarısız: '+(j.error||'')); }
+});
+
+load();
+</script>
+</body>
+</html>

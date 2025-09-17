@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="dark">
+  <title>Admin · Kullanıcı Detayı</title>
+  <style>
+    :root{
+      --bg:#0b0612; --bg2:#130a1f; --card:#1a0f1ecc; --border:#3a1f44;
+      --text:#f7f3fa; --muted:#c9b0c7; --accent:#FF6A3D; --accent2:#C81D77;
+      --radius:16px; --shadow:0 20px 60px rgba(0,0,0,.45);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:
+        radial-gradient(1200px 700px at 50% 0%, rgba(255,106,61,.24) 0%, rgba(255,106,61,0) 55%),
+        radial-gradient(1400px 900px at 50% 100%, rgba(110,15,156,.45) 0%, rgba(110,15,156,0) 60%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      color:var(--text);
+      font:15px/1.55 system-ui, -apple-system, Segoe UI, Inter, Roboto;
+    }
+    .wrap{max-width:1100px; margin:36px auto; padding:0 16px}
+    h1{margin:0 0 18px; font-weight:800}
+    .back{display:inline-block; margin-bottom:14px; color:#ffe9ff; text-decoration:none; border:1px solid var(--border); padding:6px 10px; border-radius:10px}
+    .card{
+      background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+      border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow);
+      padding:18px; margin:12px 0
+    }
+    table{width:100%; border-collapse:collapse}
+    th,td{padding:10px 12px; border-bottom:1px solid #2d1736}
+    th{color:#e8d7ee; text-align:left; font-weight:700}
+    .muted{color:var(--muted)}
+    .pill{display:inline-block;padding:4px 8px;border-radius:10px;border:1px solid #3a1f44;background:#140b20}
+    .danger{background:#3a0e19;border-color:#82223a}
+    .ok{background:#10361f;border-color:#1f6f3a}
+    .btn{cursor:pointer;padding:6px 10px;border-radius:10px;border:1px solid #3a1f44;background:#180d25;color:#fff}
+    .btn:hover{background:#231033}
+    form.inline{display:inline}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="{{ url_for('admin.users_page') }}">← Kullanıcı listesine dön</a>
+    <h1>{{ user.email }}</h1>
+
+    <!-- Durum & Aksiyonlar -->
+    <div class="card">
+      <p>
+        Durum:
+        {% if user.is_banned %}
+          <span class="pill danger">Banlı</span>
+        {% else %}
+          <span class="pill ok">Aktif</span>
+        {% endif %}
+        {% if suspicious and not user.is_trusted %}<span class="pill">Şüpheli</span>{% endif %}
+        {% if user.is_trusted %}<span class="pill">Güvenilir</span>{% endif %}
+      </p>
+      <p>
+        {% if user.is_banned %}
+          <form class="inline" method="post" action="{{ url_for('admin.user_unban', user_id=user.id) }}"><button class="btn" type="submit">Banı Kaldır</button></form>
+        {% else %}
+          <form class="inline" method="post" action="{{ url_for('admin.user_ban', user_id=user.id) }}"><button class="btn" type="submit">Banla</button></form>
+        {% endif %}
+
+        {% if suspicious and not user.is_trusted and not user.is_banned %}
+          <form class="inline" method="post" action="{{ url_for('admin.user_trust', user_id=user.id) }}"><button class="btn" type="submit">Şüpheliden Çıkar</button></form>
+        {% elif user.is_trusted %}
+          <form class="inline" method="post" action="{{ url_for('admin.user_untrust', user_id=user.id) }}"><button class="btn" type="submit">Güvenilirliği Kaldır</button></form>
+        {% endif %}
+      </p>
+    </div>
+
+    <!-- Özet -->
+    <div class="card">
+      <table>
+        <tbody>
+          <tr><th style="width:220px">E-posta</th>            <td>{{ user.email }}</td></tr>
+          <tr><th>Mevcut Token</th>                           <td>{{ tokens_current }}</td></tr>
+          <tr><th>Harcanan Token</th>                         <td>{{ tokens_spent }}</td></tr>
+          <tr><th>Satın Alınan Token</th>                     <td>{{ tokens_purchased }}</td></tr>
+          <tr><th>Günlük Ödül Sayısı</th>                     <td>{{ daily_claims }}</td></tr>
+          <tr><th>Ödül Toplam</th>                            <td>{{ reward_sum }}</td></tr>
+          <tr><th>Kayıt Tarihi</th>                           <td>{{ user.created_at }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Sipariş Geçmişi -->
+    <div class="card">
+      <h3 style="margin:4px 0 14px">Sipariş Geçmişi (Token Satın Alma)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:200px">Tarih</th>
+            <th>Adet</th>
+            <th>Tutar</th>
+            <th>Sağlayıcı</th>
+            <th>Sipariş No</th>
+            <th>İşlem ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if orders %}
+            {% for o in orders %}
+              <tr>
+                <td>{{ o.created.strftime('%d %b %Y %H:%M') if o.created else '—' }}</td>
+                <td>{{ o.qty }}</td>
+                <td>
+                  {% if o.amount is not none %}
+                    {{ o.amount }} {{ o.currency or '' }}
+                  {% else %} — {% endif %}
+                </td>
+                <td>{{ o.provider }}</td>
+                <td>{{ o.order_no }}</td>
+                <td>{{ o.txn_id }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="6" class="muted">Kayıt bulunamadı.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- İşlem Geçmişi -->
+    <div class="card">
+      <h3 style="margin:4px 0 14px">İşlem Geçmişi</h3>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:200px">Tarih</th>
+            <th>Olay</th>
+            <th>Detay</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if activities %}
+            {% for a in activities %}
+              <tr>
+                <td>{{ a.created.strftime('%d %b %Y %H:%M') if a.created else '—' }}</td>
+                <td><span class="pill">{{ a.event }}</span></td>
+                <td>{{ a.detail }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="3" class="muted">Kayıt bulunamadı.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

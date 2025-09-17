@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Profilim</title>
+  <meta name="color-scheme" content="dark">
+  <style>
+    :root{
+      --bg:#0b0612; --bg2:#130a1f; --card:#1a0f1ecc; --border:#3a1f44;
+      --text:#f7f3fa; --muted:#c9b0c7; --acc1:#FF6A3D; --acc2:#C81D77;
+      --ok:#22c55e; --warn:#f59e0b;
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; color:var(--text);
+      background:
+        radial-gradient(1100px 620px at 50% -5%, rgba(200,29,119,.35) 0%, rgba(200,29,119,0) 50%),
+        radial-gradient(1400px 900px at 50% 100%, rgba(110,15,156,.5) 0%, rgba(110,15,156,0) 60%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      font:16px/1.55 system-ui,-apple-system,Segoe UI,Inter,Roboto,Helvetica,Arial;
+    }
+    .wrap{max-width:1100px; margin:28px auto 80px; padding:0 16px}
+    h1{margin:0 0 14px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+      border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin:16px 0}
+
+    table{width:100%; border-collapse:collapse}
+    th,td{padding:10px 12px; border-bottom:1px solid #2a1734; color:#f0e7f6}
+    th{color:#d9c5de; text-align:left; font-weight:600}
+    .muted{color:var(--muted)}
+    .pill{display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px;
+      border:1px solid #4b2b5a; background:#150c21}
+    .btn{display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:10px;
+      border:1px solid #4b2b5a; background:#150c21; color:#fff; text-decoration:none; cursor:pointer}
+    .btn-primary{background:linear-gradient(90deg,var(--acc1),var(--acc2)); border:none; color:#210a14}
+    .row{display:grid; gap:16px; grid-template-columns:1fr}
+    @media (min-width:900px){ .row{grid-template-columns: 1fr 1fr} }
+
+    /* Progress bar */
+    .bar{height:14px; background:#1c0f28; border:1px solid #4b2b5a; border-radius:999px; position:relative; overflow:hidden}
+    .bar > span{position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg,var(--acc1),var(--acc2))}
+    .tick{position:absolute; top:-8px; width:2px; height:30px; background:#6a3a80; opacity:.9}
+    .tick-label{position:absolute; top:24px; transform:translateX(-50%); font-size:12px; color:#d9c5de}
+    .ok{color:var(--ok)} .warn{color:var(--warn)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>{{ user.email }}</h1>
+
+    <!-- Özet -->
+    <div class="card">
+      <table>
+        <tbody>
+          <tr><th>E-posta</th><td>{{ user.email }}</td></tr>
+          <tr><th>Mevcut Token</th><td>{{ user.tokens or 0 }}</td></tr>
+          <tr><th>Harcanan Token</th><td>{{ tokens_spent_total }}</td></tr>
+          <tr><th>Satın Alınan Token (Toplam)</th><td>{{ purchased_total }}</td></tr>
+          <tr><th>Günlük Ödül Sayısı</th><td>{{ daily_count }}</td></tr>
+          <tr><th>Kayıt Tarihi</th><td>{{ user.created_at }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Seviye / Ödül ilerleme -->
+    <div class="card">
+      <h3 style="margin-top:0">Sadakat İlerlemesi</h3>
+      <div class="muted" style="margin-bottom:8px">
+        Toplam satın alınan token: <b>{{ purchased_total }}</b> / {{ TIER_THRESHOLDS[3] }}
+      </div>
+
+      <div class="bar" style="margin-bottom:26px">
+        <span style="width: {{ '%.2f' % pct_total }}%"></span>
+        <div class="tick" style="left: {{ '%.2f' % tick1 }}%"></div>
+        <div class="tick" style="left: {{ '%.2f' % tick2 }}%"></div>
+        <div class="tick" style="left: {{ '%.2f' % tick3 }}%"></div>
+        <div class="tick-label" style="left: {{ '%.2f' % tick1 }}%">300</div>
+        <div class="tick-label" style="left: {{ '%.2f' % tick2 }}%">750</div>
+        <div class="tick-label" style="left: {{ '%.2f' % tick3 }}%">2000</div>
+      </div>
+
+      <div class="row">
+        <!-- Tier 1 -->
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div><b>Seviye 1</b> — {{ TIER_THRESHOLDS[1] }} token • Ödül: +{{ TIER_REWARDS[1] }}</div>
+            {% if 1 in claimed_set %}
+              <span class="pill ok">Alındı</span>
+            {% elif eligible[1] %}
+              <form method="post" action="{{ url_for('profile.claim_tier', tier=1) }}">
+                <button class="btn btn-primary" type="submit">Ödülü Al</button>
+              </form>
+            {% else %}
+              <span class="pill">Kalan: {{ TIER_THRESHOLDS[1] - purchased_total }}</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Tier 2 -->
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div><b>Seviye 2</b> — {{ TIER_THRESHOLDS[2] }} token • Ödül: +{{ TIER_REWARDS[2] }}</div>
+            {% if 2 in claimed_set %}
+              <span class="pill ok">Alındı</span>
+            {% elif eligible[2] %}
+              <form method="post" action="{{ url_for('profile.claim_tier', tier=2) }}">
+                <button class="btn btn-primary" type="submit">Ödülü Al</button>
+              </form>
+            {% else %}
+              <span class="pill">Kalan: {{ TIER_THRESHOLDS[2] - purchased_total }}</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Tier 3 -->
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div><b>Seviye 3</b> — {{ TIER_THRESHOLDS[3] }} token • Ödül: +{{ TIER_REWARDS[3] }}</div>
+            {% if 3 in claimed_set %}
+              <span class="pill ok">Alındı</span>
+            {% elif eligible[3] %}
+              <form method="post" action="{{ url_for('profile.claim_tier', tier=3) }}">
+                <button class="btn btn-primary" type="submit">Ödülü Al</button>
+              </form>
+            {% else %}
+              <span class="pill">Kalan: {{ TIER_THRESHOLDS[3] - purchased_total }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sipariş geçmişi -->
+    <div class="card">
+      <h3 style="margin-top:0">Sipariş Geçmişi (Token Satın Alma)</h3>
+      <table>
+        <thead>
+          <tr><th>Tarih</th><th>Adet</th><th>Para</th><th>Detay</th></tr>
+        </thead>
+        <tbody>
+        {% for ev in orders %}
+          {% set m = parse_meta(ev) %}
+          <tr>
+            <td class="muted">{{ ev.created_at }}</td>
+            <td>{{ m.tokens or 0 }}</td>
+            <td>{{ m.amount or '-' }}</td>
+            <td class="muted">{{ m.currency or '' }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="muted">Kayıt bulunamadı.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- İşlem geçmişi -->
+    <div class="card">
+      <h3 style="margin-top:0">İşlem Geçmişi</h3>
+      <table>
+        <thead>
+          <tr><th>Tarih</th><th>Olay</th><th>Detay</th></tr>
+        </thead>
+        <tbody>
+        {% for ev in history %}
+          {% set m = parse_meta(ev) %}
+          <tr>
+            <td class="muted">{{ ev.created_at }}</td>
+            <td><span class="pill">{{ ev.event }}</span></td>
+            <td class="muted">{{ m|tojson }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="3" class="muted">Kayıt bulunamadı.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Doğrulama gönderildi</title>
+  <style>
+    body{margin:0;background:#0b0612;color:#f7f3fa;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto}
+    .wrap{max-width:680px;margin:80px auto;padding:0 16px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+      border:1px solid #3a1f44;border-radius:16px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+    a{color:#ffb3cf;text-decoration:none}
+    .muted{color:#c9b0c7}
+    .btn{display:inline-block;margin-top:10px;background:linear-gradient(90deg,#FF6A3D,#C81D77);color:#130a1f;
+         padding:10px 14px;border-radius:10px;font-weight:700;text-decoration:none}
+    .ok{color:#b2f5ea} .err{color:#ffd1d6}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>E-posta doğrulaması gerekiyor</h1>
+
+      {% if sent %}
+        <p><b>{{ email }}</b> adresine doğrulama e-postası gönderildi.</p>
+        <p class="muted">Gelen kutunu ve <b>spam</b> klasörünü kontrol et.</p>
+      {% else %}
+        <p class="err">E-posta gönderiminde bir sorun oluştu.</p>
+        <p class="muted">Biraz sonra tekrar dene veya adresini kontrol ederek yeniden iste.</p>
+      {% endif %}
+
+      <p>
+        <a class="btn" href="{{ url_for('auth.resend_verification', email=email) }}">Doğrulama e-postasını yeniden gönder</a>
+      </p>
+
+      <p style="margin-top:14px"><a href="{{ url_for('auth.login_page') }}">Giriş sayfasına dön</a></p>
+    </div>
+  </div>
+</body>
+</html>

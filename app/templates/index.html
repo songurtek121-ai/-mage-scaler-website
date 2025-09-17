@@ -1,0 +1,414 @@
+<!doctype html> 
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PictureScaler — Ready Prints</title>
+  <meta name="color-scheme" content="dark">
+  <style>
+    :root{
+      --bg:#0b0612; --bg-2:#130a1f; --card:#1a0f1ecc; --border:#3a1f44;
+      --text:#f7f3fa; --heading:#fff8ff; --muted:#c9b0c7;
+      --accent:#FF6A3D; --accent-2:#C81D77; --accent-3:#6E0F9C;
+      --shadow:0 20px 60px rgba(0,0,0,.48); --radius:16px; --radius-sm:12px;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{
+      margin:0; color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 50% 12%, rgba(255,106,61,.35) 0%, rgba(255,106,61,0) 60%),
+        radial-gradient(1000px 650px at 50% 0%,  rgba(200,29,119,.38) 0%, rgba(200,29,119,0) 55%),
+        radial-gradient(1400px 900px at 50% 100%, rgba(110,15,156,.55) 0%, rgba(110,15,156,0) 60%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    .topbar{position:sticky; top:10px; z-index:50; display:flex; align-items:center; justify-content:space-between; max-width:1200px; margin:0 auto; padding:0 16px}
+    .nav{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02)); border:1px solid var(--border); backdrop-filter: blur(10px); border-radius:var(--radius); padding:10px 14px; gap:10px; display:flex; align-items:center; box-shadow:var(--shadow)}
+    .brand{display:flex; align-items:center; gap:8px}
+    .brand img{height:28px}
+    .token-pill{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:#170c23; color:#ffe9ff; font-size:13px}
+    .btn{display:inline-flex; align-items:center; gap:8px; border:none; cursor:pointer; font-weight:700; padding:8px 12px; border-radius:12px; text-decoration:none}
+    .btn-primary{background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:#1a0f1e}
+    .btn-ghost{background:transparent; color:#ffe9ff; border:1px solid var(--border)}
+    .btn-ghost:hover{background:#1a0f26}
+
+    .count-pill{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:#140b20; font-size:13px; color:#ffdeff}
+
+    .wrap{max-width:1200px; margin:34px auto 60px; padding:0 16px}
+    h1{font-size: clamp(28px, 4.5vw, 56px); line-height:1.12; margin:18px 0 10px; text-align:center; color:var(--heading); text-shadow:0 6px 30px rgba(0,0,0,.6)}
+    .accent,.up{color:transparent; background:linear-gradient(90deg,var(--accent),var(--accent-2)); -webkit-background-clip:text; background-clip:text; font-weight:900}
+    p.lead{margin:6px auto 26px; color:var(--muted); text-align:center; max-width:900px}
+
+    .grid-card{display:grid; grid-template-columns:1fr; gap:14px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015)); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:26px}
+
+    .drop{border:1.5px dashed #5b2d6b; border-radius:var(--radius-sm); padding:30px; text-align:center; background:#160b22c4; transition:border-color .2s, background .2s}
+    .drop:hover{border-color:#ff7a54; background:#1b0d2ac7}
+    .preview-wrap{margin-top:16px}
+    .preview-title{margin:0 0 8px; color:#d7bfd4; font-size:14px}
+    .preview-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px}
+    .thumb{position:relative; background:#0f0a16; border:1px solid #2e1b40; border-radius:14px; padding:10px; overflow:hidden}
+    .thumb img{width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:10px; display:block}
+    .thumb .meta{margin-top:6px; font-size:12px; color:#c7b1c6; word-break:break-all}
+    .thumb .remove{position:absolute; top:8px; right:8px; background:rgba(0,0,0,.55); color:#fff; border:none; border-radius:10px; width:26px; height:26px; cursor:pointer; font-size:16px; line-height:24px}
+    .files{color:#c2a7c1; font-size:13px; margin-top:8px}
+    .controls{display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap}
+    .progress{height:9px; background:#1d1230; border-radius:12px; overflow:hidden; margin-top:12px}
+    .bar{height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--accent-2)); transition:width .2s ease}
+    .select{appearance:none; background:#150e22; color:#fff0ff; border:1px solid #5b2d6b; border-radius:12px; padding:10px 12px; cursor:pointer; min-width:88px}
+    label{color:#e9d3eb}
+    .segment{display:inline-flex; background:#140b20; border:1px solid #5b2d6b; border-radius:12px; padding:4px}
+    .segment input{display:none}
+    .segment span{display:inline-block; padding:8px 12px; border-radius:8px; color:#ffe9ff; cursor:pointer; user-select:none}
+    .segment input:checked + span{background:linear-gradient(90deg, rgba(255,106,61,.22), rgba(200,29,119,.22)); color:#ffffff; box-shadow: inset 0 0 0 1px #7f2a91}
+
+    .lang{position:relative}
+    .lang-btn{background:#160e24; color:#ffe9ff; border:1px solid #503061; border-radius:10px; padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px}
+    .lang-list{position:absolute; right:0; top:42px; background:#1a0f2b; border:1px solid #503061; border-radius:12px; min-width:220px; max-height:320px; overflow:auto; padding:8px; display:none}
+    .lang-item{display:flex; align-items:center; gap:10px; padding:8px; border-radius:8px; color:#ffe9ff; cursor:pointer}
+    .lang-item:hover{background:#230f34}
+    .flag{width:18px}
+    .shown{display:block}
+
+    /* Kupon kutusu */
+    .coupon{display:flex; gap:8px; align-items:center}
+    .coupon input{background:#150e22; color:#fff; border:1px solid #5b2d6b; border-radius:10px; padding:8px 10px}
+  </style>
+</head>
+<body>
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="brand">
+      <img src="{{ url_for('static', filename='img/PictureScaler_icon_gradient.svg') }}" alt="PictureScaler">
+      <img src="{{ url_for('static', filename='img/PictureScaler_compact_wordmark.svg') }}" alt="PictureScaler">
+    </div>
+    <div class="nav">
+      <div class="lang">
+        <button id="langBtn" class="lang-btn"><span class="flag" id="langFlag">🇹🇷</span><span id="langName">Türkçe</span></button>
+        <div id="langList" class="lang-list"></div>
+      </div>
+
+      {% if current_user.is_authenticated %}
+        <span id="tokenPill" class="token-pill">Tokens: {{ current_user.tokens or 0 }}</span>
+
+        <!-- GÜNLÜK JETON alanı -->
+        <span id="dailyArea"></span>
+
+        <!-- KUPON: Herkes görür -->
+        <span class="coupon">
+          <input id="couponCode" type="text" placeholder="Kupon kodu…">
+          <button id="couponBtn" class="btn btn-ghost" type="button">Kuponu Kullan</button>
+        </span>
+
+        <!-- Sadece ADMIN: Kuponlar sayfasına git -->
+        {% set is_admin = (current_user.is_admin or (current_user.email|lower in (config.ADMIN_EMAILS or []))) %}
+        {% if is_admin %}
+          <a href="{{ url_for('coupons.coupons_page') }}" class="btn btn-primary">Kupon Oluştur</a>
+        {% endif %}
+
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost">Logout</a>
+      {% else %}
+        <a href="{{ url_for('auth.login_page', next=url_for('main.index')) }}" class="btn btn-ghost">Login</a>
+        <a href="{{ url_for('auth.register_page') }}" class="btn btn-primary">Register</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="wrap">
+    <h1><span id="tpre"></span> <b class="accent up" id="thigh"></b> <span id="tpost"></span></h1>
+    <p class="lead" id="lead"></p>
+
+    <div class="card">
+      <form id="form" class="grid-card" action="/upload" method="post" enctype="multipart/form-data">
+        <div id="drop" class="drop">
+          <input id="file" name="files" type="file" multiple accept="image/png,image/jpeg,image/jpg" class="hidden" />
+          <button type="button" class="btn btn-primary" id="pick"><span id="btnUpload">➕ Upload Image</span></button>
+          <p class="muted" id="dropHelp" style="margin:10px 0 0; color:#e3c1d7">Drop an image or click the button • Supported: png | jpg | jpeg</p>
+        </div>
+
+        <div class="preview-wrap">
+          <p class="preview-title" id="selTitle">Selected images</p>
+          <div id="previews" class="preview-grid"></div>
+          <div class="files" id="filesList"></div>
+          <div class="progress hidden" id="prog"><div class="bar" id="bar"></div></div>
+
+          <div id="submitWrap" class="controls hidden">
+            <label id="lblOrientation">Yön</label>
+            <div class="segment">
+              <label><input type="radio" name="orientation" value="portrait" id="oriPortrait" checked><span>Dikey</span></label>
+              <label><input type="radio" name="orientation" value="landscape" id="oriLandscape"><span>Yatay</span></label>
+            </div>
+
+            <label for="scale" id="lblScale">Scale</label>
+            <select id="scale" name="scale" class="select">
+              <option value="1">1×</option>
+              <option value="2">2×</option>
+              <option value="3">3×</option>
+              <option value="4">4×</option>
+              <option value="5" selected>5×</option>
+            </select>
+
+            <button class="btn btn-primary" type="submit" id="submitBtn">Process & Download ZIP</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- i18n -->
+  <script src="{{ url_for('static', filename='js/langs.js') }}"></script>
+
+  <!-- Auth durumu JS'ye geçsin -->
+  <script>
+    window.AUTH = {
+      loggedIn: {{ 'true' if current_user.is_authenticated else 'false' }},
+      tokens: {{ current_user.tokens if current_user.is_authenticated else 0 }},
+      dailyRemainingSeconds: {{ daily_remaining_seconds if current_user.is_authenticated else 0 }}
+    };
+  </script>
+
+  <!-- App JS -->
+  <script>
+  const LANGS = window.LANGS || [];
+
+  const langBtn  = document.getElementById('langBtn');
+  const langList = document.getElementById('langList');
+  const langFlag = document.getElementById('langFlag');
+  const langName = document.getElementById('langName');
+
+  function applyLang(code){
+    const L = LANGS.find(x=>x.code===code) || LANGS[0]; if(!L) return;
+    tpre.textContent  = L.title_pre; thigh.textContent = L.title_high; tpost.textContent  = L.title_post;
+    lead.textContent  = L.lead;
+    btnUpload.textContent = L.ui.upload; dropHelp.textContent  = L.ui.drop;
+    selTitle.textContent = L.ui.selected; lblScale.textContent = L.ui.scale; submitBtn.textContent = L.ui.submit;
+    langFlag.textContent = L.flag; langName.textContent = L.name;
+    localStorage.setItem('lang', L.code);
+  }
+  function buildLangMenu(){
+    langList.innerHTML = '';
+    LANGS.forEach(L=>{
+      const div = document.createElement('div');
+      div.className = 'lang-item';
+      div.innerHTML = `<span class="flag">${L.flag}</span><span>${L.name}</span>`;
+      div.addEventListener('click', ()=>{ applyLang(L.code); langList.classList.remove('shown'); });
+      langList.appendChild(div);
+    });
+  }
+  langBtn.addEventListener('click', ()=> langList.classList.toggle('shown'));
+  document.addEventListener('click', (e)=>{ if(!langList.contains(e.target) && !langBtn.contains(e.target)){ langList.classList.remove('shown'); }});
+  buildLangMenu();
+  const tpre=document.getElementById('tpre'), thigh=document.getElementById('thigh'), tpost=document.getElementById('tpost'),
+        lead=document.getElementById('lead'), btnUpload=document.getElementById('btnUpload'), dropHelp=document.getElementById('dropHelp'),
+        selTitle=document.getElementById('selTitle'), lblScale=document.getElementById('lblScale'), submitBtn=document.getElementById('submitBtn');
+  applyLang(localStorage.getItem('lang') || (LANGS[0]?.code || 'tr'));
+
+  // ==== Upload UX (değişmedi) ====
+  const pick = document.getElementById('pick');
+  const file = document.getElementById('file');
+  const drop = document.getElementById('drop');
+  const form = document.getElementById('form');
+  const prog = document.getElementById('prog');
+  const bar  = document.getElementById('bar');
+  const list = document.getElementById('filesList');
+  const previews = document.getElementById('previews');
+  const submitWrap = document.getElementById('submitWrap');
+  const tokenPill = document.getElementById('tokenPill');
+  const dailyArea = document.getElementById('dailyArea');
+
+  pick.onclick = () => {
+    if (!window.AUTH || !window.AUTH.loggedIn) {
+      const next = encodeURIComponent(window.location.pathname);
+      window.location.href = `/login?next=${next}`;
+      return;
+    }
+    file.click();
+  };
+
+  ['dragenter','dragover','drop'].forEach(evt => document.addEventListener(evt, e=>{e.preventDefault();}));
+  ['dragenter','dragover'].forEach(evt => drop.addEventListener(evt, e =>{e.preventDefault(); drop.style.borderColor='#ff7a54';}));
+  ['dragleave','drop'].forEach(evt => drop.addEventListener(evt, e =>{e.preventDefault(); drop.style.borderColor='#5b2d6b';}));
+
+  drop.addEventListener('drop', e=>{ e.preventDefault();
+    if (!window.AUTH || !window.AUTH.loggedIn) {
+      const next = encodeURIComponent(window.location.pathname);
+      window.location.href = `/login?next=${next}`;
+      return;
+    }
+    if(e.dataTransfer.files?.length){ file.files = e.dataTransfer.files; renderPreviews(); }});
+  file.addEventListener('change', ()=>{ renderPreviews(); });
+
+  function renderPreviews(){
+    previews.innerHTML = ''; list.textContent = ''; submitBtn.disabled = true; submitWrap.classList.add('hidden');
+    const files = Array.from(file.files||[]); if(!files.length) return;
+    const allowed = files.filter(f=>(/\.(png|jpg|jpeg)$/i).test(f.name));
+    if(!allowed.length){ list.textContent='Only PNG/JPG are accepted.'; return; }
+    allowed.forEach((f,idx)=>{
+      const div = document.createElement('div'); div.className='thumb';
+      const img = document.createElement('img'); img.alt = f.name; img.loading='lazy'; img.src = URL.createObjectURL(f);
+      const meta = document.createElement('div'); meta.className='meta'; meta.textContent = `${f.name} · ${(f.size/1024).toFixed(1)} KB`;
+      const removeBtn = document.createElement('button'); removeBtn.type='button'; removeBtn.className='remove'; removeBtn.textContent='×'; removeBtn.addEventListener('click', ()=> removeFile(idx));
+      div.appendChild(img); div.appendChild(removeBtn); div.appendChild(meta); previews.appendChild(div);
+    });
+    list.textContent = `${allowed.length} file(s) selected.`; submitBtn.disabled = false; submitWrap.classList.remove('hidden');
+  }
+
+  function removeFile(index){
+    try{
+      const dt = new DataTransfer();
+      const files = Array.from(file.files);
+      files.splice(index,1);
+      files.forEach(f=>dt.items.add(f));
+      file.files = dt.files;
+      renderPreviews();
+    }catch(err){
+      console.error('removeFile error:', err);
+      alert('Your browser does not support removing items. Please reselect files.');
+    }
+  }
+
+  // --- Günlük Jeton (aynı)
+  let dailyTimer = null;
+  function hms(secs){
+    secs = Math.max(0, Math.floor(secs));
+    const h = String(Math.floor(secs/3600)).padStart(2,'0');
+    const m = String(Math.floor((secs%3600)/60)).padStart(2,'0');
+    const s = String(secs%60).padStart(2,'0');
+    return `${h}:${m}:${s}`;
+  }
+  function renderDailyArea(){
+    if (!dailyArea) return;
+    if (!window.AUTH || !window.AUTH.loggedIn) { dailyArea.innerHTML = ''; return; }
+    const left = Number(window.AUTH.dailyRemainingSeconds||0);
+    if (left <= 0){
+      dailyArea.innerHTML = `<button id="claimBtn" class="btn btn-ghost">GÜNLÜK JETON</button>`;
+      const claimBtn = document.getElementById('claimBtn');
+      claimBtn.onclick = async ()=>{
+        try{
+          const res = await fetch('/daily-token', {method:'POST', headers: {'X-Requested-With':'XMLHttpRequest'}});
+          const data = await res.json();
+          if (res.status === 200 && data.ok){
+            window.AUTH.tokens = data.tokens;
+            window.AUTH.dailyRemainingSeconds = data.next_seconds || 86400;
+            if (tokenPill) tokenPill.textContent = `Tokens: ${window.AUTH.tokens}`;
+            startDailyCountdown();
+          } else if (res.status === 429){
+            window.AUTH.dailyRemainingSeconds = Number(data.remaining||0);
+            startDailyCountdown();
+            alert('Günlük jeton için beklemeniz gerekiyor.');
+          } else {
+            alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+          }
+        }catch(e){
+          console.error(e);
+          alert('Ağ hatası. Lütfen tekrar deneyin.');
+        }
+      };
+    } else {
+      dailyArea.innerHTML = `<span class="count-pill">⏳ ${hms(left)} sonra</span>`;
+    }
+  }
+  function startDailyCountdown(){
+    if (dailyTimer) { clearInterval(dailyTimer); dailyTimer = null; }
+    renderDailyArea();
+    dailyTimer = setInterval(()=>{
+      if (!window.AUTH) return;
+      window.AUTH.dailyRemainingSeconds = Math.max(0, (Number(window.AUTH.dailyRemainingSeconds||0) - 1));
+      renderDailyArea();
+      if (Number(window.AUTH.dailyRemainingSeconds) <= 0){
+        clearInterval(dailyTimer); dailyTimer = null;
+        renderDailyArea();
+      }
+    }, 1000);
+  }
+  if (window.AUTH && window.AUTH.loggedIn){
+    startDailyCountdown();
+  }
+
+  // --- FORM SUBMIT (değişmedi)
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    if(!file.files.length){ alert('Please select at least one image.'); return; }
+
+    prog.classList.remove('hidden');
+    submitBtn.disabled = true;
+    bar.style.width = '0%';
+
+    const fd = new FormData(form);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/upload');
+    xhr.responseType = 'blob';
+    xhr.setRequestHeader('X-Requested-With','XMLHttpRequest');
+
+    xhr.upload.onprogress = (evt)=>{
+      if(evt.lengthComputable){
+        const pct = Math.max(1, Math.min(99, Math.round((evt.loaded / evt.total) * 100)));
+        bar.style.width = pct + '%';
+      }
+    };
+
+    xhr.onload = ()=>{
+      if (xhr.status === 401) { const next = encodeURIComponent(window.location.pathname); window.location.href = `/login?next=${next}`; return; }
+      if (xhr.status === 403) { alert('E-posta doğrulaması gerekli.'); prog.classList.add('hidden'); submitBtn.disabled = false; bar.style.width = '0%'; return; }
+      if (xhr.status === 402) {
+        const need = xhr.getResponseHeader('X-Required-Tokens') || '?';
+        const left = xhr.getResponseHeader('X-Tokens-Remaining') || '0';
+        alert(`Yetersiz token.\nGereken: ${need} • Kalan: ${left}\nLütfen paket satın alın veya günlük jetonu bekleyin.`);
+        prog.classList.add('hidden'); submitBtn.disabled = false; bar.style.width = '0%'; return;
+      }
+      if (xhr.status === 200){
+        const left = xhr.getResponseHeader('X-Tokens-Remaining');
+        if (tokenPill && left !== null) { tokenPill.textContent = `Tokens: ${left}`; if (window.AUTH) window.AUTH.tokens = parseInt(left||'0',10); }
+        const cd = xhr.getResponseHeader('Content-Disposition') || '';
+        const m = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(cd);
+        const filename = decodeURIComponent(m?.[1] || m?.[2] || 'pack.zip');
+        const blob = xhr.response; const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url), 1500);
+        bar.style.width = '100%';
+      } else {
+        alert('Processing failed: ' + xhr.status);
+      }
+      setTimeout(()=>{ prog.classList.add('hidden'); submitBtn.disabled = false; }, 800);
+    };
+    xhr.onerror = ()=>{ alert('Network error. Please try again.'); prog.classList.add('hidden'); submitBtn.disabled = false; bar.style.width = '0%'; };
+    xhr.send(fd);
+  });
+
+  // === Kupon Kullan ===
+  const couponBtn = document.getElementById('couponBtn');
+  const couponCode = document.getElementById('couponCode');
+  if (couponBtn && couponCode){
+    couponBtn.addEventListener('click', async ()=>{
+      if (!window.AUTH || !window.AUTH.loggedIn){
+        const next = encodeURIComponent(window.location.pathname);
+        window.location.href = `/login?next=${next}`;
+        return;
+      }
+      const code = (couponCode.value||'').trim();
+      if (!code){ alert('Kupon kodu girin.'); return; }
+      try{
+        const fd = new FormData(); fd.append('code', code);
+        const res = await fetch('/coupon/redeem', { method:'POST', body: fd });
+        const data = await res.json();
+        if (res.ok && data.ok){
+          if (data.tokens_added){
+            // token güncelle
+            window.AUTH.tokens = (window.AUTH.tokens||0) + Number(data.tokens_added||0);
+            if (tokenPill) tokenPill.textContent = `Tokens: ${window.AUTH.tokens}`;
+          }
+          alert(data.message || 'Kupon uygulandı.');
+          couponCode.value = '';
+        } else {
+          alert(data.error || ('Hata: ' + res.status));
+        }
+      }catch(e){
+        console.error(e);
+        alert('Ağ hatası.');
+      }
+    });
+  }
+  </script>
+</body>
+</html>
